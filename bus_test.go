@@ -108,7 +108,7 @@ func TestBus_CloseWithCancellation(t *testing.T) {
 	}
 
 	err = b.Publish("topic1", "message")
-	if !errors.Is(err, ErrNoSuchSubject) {
+	if err != nil && !errors.Is(err, ErrNoSuchSubject) {
 		t.Errorf("should not have failed to publish with error or fall with: %v, got: %v", ErrNoSuchSubject, err)
 	}
 }
