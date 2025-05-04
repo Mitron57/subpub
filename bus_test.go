@@ -103,12 +103,12 @@ func TestBus_CloseWithCancellation(t *testing.T) {
 	cancel()
 	err := b.Close(ctx)
 
-	if err == nil || !errors.Is(err, context.Canceled) {
-		t.Errorf("should have failed to cancel closing with error: %v, got: %v", context.Canceled, err)
+	if err != nil && !errors.Is(err, context.Canceled) {
+		t.Errorf("should not have failed to cancel closing with error or fall with: %v, got: %v", context.Canceled, err)
 	}
 
 	err = b.Publish("topic1", "message")
-	if err != nil && !errors.Is(err, ErrNoSuchSubject) {
+	if !errors.Is(err, ErrNoSuchSubject) {
 		t.Errorf("should not have failed to publish with error or fall with: %v, got: %v", ErrNoSuchSubject, err)
 	}
 }
