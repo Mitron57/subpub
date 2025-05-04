@@ -1,4 +1,4 @@
-package subPub
+package subpub
 
 type Subscription interface {
 	// Unsubscribe will remove interest in the current subject subscription is for.

@@ -1,4 +1,4 @@
-package subPub
+package subpub
 
 import (
 	"testing"
