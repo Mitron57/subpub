@@ -111,7 +111,9 @@ func (b *bus) Close(ctx context.Context) error {
 		return ErrClosedBus
 	}
 
+	b.mx.RLock()
 	topicsToClose := len(b.topics)
+	b.mx.RUnlock()
 
 	if topicsToClose == 0 {
 		close(b.listener)
