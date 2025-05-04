@@ -1,3 +1,3 @@
-module github.com/Mitron57/subpub
+module github.com/mitron57/subpub
 
 go 1.23
