@@ -1,6 +1,7 @@
 package subpub
 
 import (
+	"errors"
 	"testing"
 	"time"
 )
@@ -21,7 +22,7 @@ func TestSubscriber_Unsubscribe(t *testing.T) {
 	sub.Unsubscribe()
 
 	err = b.Publish("subject", 1)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrNoSuchSubject) {
 		t.Errorf("failed to publish: %e", err)
 	}
 

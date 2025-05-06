@@ -3,7 +3,6 @@ package subpub
 import (
 	"context"
 	"sync"
-	"sync/atomic"
 )
 
 // MessageHandler is a callback function that processes messages delivered to subscribers.
@@ -24,7 +23,7 @@ type bus struct {
 	topics    map[string]*subject
 	listener  chan string
 	closeChan chan struct{}
-	closed    atomic.Bool
+	closed    bool
 }
 
 func NewPubSub() SubPub {
@@ -37,22 +36,17 @@ func NewPubSub() SubPub {
 
 // Detaches subscriber from bus.
 func (b *bus) detach(subject string, subscriptionId int) {
-	b.mx.RLock()
+	b.mx.Lock()
+	defer b.mx.Unlock()
 	topic, ok := b.topics[subject]
-	b.mx.RUnlock()
 
 	if !ok {
 		return
 	}
-
 	topic.remove(subscriptionId)
-}
-
-// Deletes subject from topics
-func (b *bus) closeSubject(subject string) {
-	b.mx.Lock()
-	defer b.mx.Unlock()
-	delete(b.topics, subject)
+	if topic.empty() {
+		delete(b.topics, subject)
+	}
 }
 
 // Subscribe registers new subscriber to the subject.
@@ -63,19 +57,16 @@ func (b *bus) Subscribe(subject string, handler MessageHandler) (Subscription, e
 		return nil, ErrNilHandler
 	}
 
-	if b.closed.Load() {
+	b.mx.Lock()
+	defer b.mx.Unlock()
+	if b.closed {
 		return nil, ErrClosedBus
 	}
 
-	b.mx.RLock()
 	topic, ok := b.topics[subject]
-	b.mx.RUnlock()
-
 	if !ok {
 		topic = newTopic(subject, b.listener, b.closeChan)
-		b.mx.Lock()
 		b.topics[subject] = topic
-		b.mx.Unlock()
 		go topic.listen()
 	}
 
@@ -87,13 +78,12 @@ func (b *bus) Subscribe(subject string, handler MessageHandler) (Subscription, e
 // ErrNoSuchSubject is returned, when there's no such subject (interesting, isn't it?),
 // ErrClosedBus is returned when there's attempt to publish on a closed (or closing) bus.
 func (b *bus) Publish(subject string, msg any) error {
-	if b.closed.Load() {
+	b.mx.RLock()
+	defer b.mx.RUnlock()
+	if b.closed {
 		return ErrClosedBus
 	}
-
-	b.mx.RLock()
 	topic, ok := b.topics[subject]
-	b.mx.RUnlock()
 
 	if !ok {
 		return ErrNoSuchSubject
@@ -107,13 +97,13 @@ func (b *bus) Publish(subject string, msg any) error {
 // It may be cancelled via context, but be aware that the bus is in closed state during closing
 // and closed topics are not restored.
 func (b *bus) Close(ctx context.Context) error {
-	if !b.closed.CompareAndSwap(false, true) {
+	b.mx.Lock()
+	defer b.mx.Unlock()
+	if b.closed {
 		return ErrClosedBus
 	}
-
-	b.mx.RLock()
+	b.closed = true
 	topicsToClose := len(b.topics)
-	b.mx.RUnlock()
 
 	if topicsToClose == 0 {
 		close(b.listener)
@@ -121,18 +111,17 @@ func (b *bus) Close(ctx context.Context) error {
 		return nil
 	}
 
-	for closedTopics := 0; closedTopics < topicsToClose; {
+	for range topicsToClose {
 		b.closeChan <- struct{}{}
-		closedTopics++
 
 		select {
 		case <-ctx.Done():
 			topic := <-b.listener
-			b.closeSubject(topic)
-			b.closed.Store(false)
+			delete(b.topics, topic)
+			b.closed = false
 			return ctx.Err()
 		case topic := <-b.listener:
-			b.closeSubject(topic)
+			delete(b.topics, topic)
 		}
 	}
 

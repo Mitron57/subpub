@@ -41,6 +41,12 @@ func (t *subject) remove(handlerId int) {
 	delete(t.handlers, handlerId)
 }
 
+func (t *subject) empty() bool {
+	t.mx.RLock()
+	defer t.mx.RUnlock()
+	return len(t.handlers) == 0
+}
+
 // notifyAllHandlers asynchronously executes all handlers in a map.
 func (t *subject) notifyAllHandlers(msg any) {
 	var wg sync.WaitGroup
