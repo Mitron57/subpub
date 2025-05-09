@@ -19,18 +19,14 @@ type SubPub interface {
 }
 
 type bus struct {
-	mx        sync.RWMutex
-	topics    map[string]*subject
-	listener  chan string
-	closeChan chan struct{}
-	closed    bool
+	mx     sync.RWMutex
+	topics map[string]*subject
+	closed bool
 }
 
 func NewPubSub() SubPub {
 	return &bus{
-		topics:    make(map[string]*subject),
-		listener:  make(chan string),
-		closeChan: make(chan struct{}),
+		topics: make(map[string]*subject),
 	}
 }
 
@@ -38,13 +34,15 @@ func NewPubSub() SubPub {
 func (b *bus) detach(subject string, subscriptionId int) {
 	b.mx.Lock()
 	defer b.mx.Unlock()
-	topic, ok := b.topics[subject]
 
+	topic, ok := b.topics[subject]
 	if !ok {
 		return
 	}
+
 	topic.remove(subscriptionId)
 	if topic.empty() {
+		topic.close()
 		delete(b.topics, subject)
 	}
 }
@@ -65,7 +63,7 @@ func (b *bus) Subscribe(subject string, handler MessageHandler) (Subscription, e
 
 	topic, ok := b.topics[subject]
 	if !ok {
-		topic = newTopic(subject, b.listener, b.closeChan)
+		topic = newTopic(subject)
 		b.topics[subject] = topic
 		go topic.listen()
 	}
@@ -106,26 +104,18 @@ func (b *bus) Close(ctx context.Context) error {
 	topicsToClose := len(b.topics)
 
 	if topicsToClose == 0 {
-		close(b.listener)
-		close(b.closeChan)
 		return nil
 	}
 
-	for range topicsToClose {
-		b.closeChan <- struct{}{}
-
+	for topic := range b.topics {
 		select {
 		case <-ctx.Done():
-			topic := <-b.listener
-			delete(b.topics, topic)
 			b.closed = false
 			return ctx.Err()
-		case topic := <-b.listener:
+		default:
+			b.topics[topic].close()
 			delete(b.topics, topic)
 		}
 	}
-
-	close(b.listener)
-	close(b.closeChan)
 	return nil
 }
