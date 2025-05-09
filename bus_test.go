@@ -78,12 +78,14 @@ func TestBus_SubscribeWithNilHandler(t *testing.T) {
 func TestBus_Close(t *testing.T) {
 	b := NewPubSub()
 
-	_, err := b.Subscribe("subject", dummy)
-	if err != nil {
-		t.Errorf("failed to subscribe: %v", err)
+	for _, topic := range []string{"topic1", "topic2", "topic3"} {
+		_, err := b.Subscribe(topic, dummy)
+		if err != nil {
+			t.Errorf("failed to subscribe: %v", err)
+		}
 	}
 
-	err = b.Close(context.Background())
+	err := b.Close(context.Background())
 	if err != nil {
 		t.Errorf("failed to close bus: %v", err)
 	}
