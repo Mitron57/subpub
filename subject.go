@@ -58,8 +58,8 @@ func (t *subject) notifyAllHandlers(msg any) {
 			handler(msg)
 		}()
 	}
-	t.mx.RUnlock()
 	wg.Wait()
+	t.mx.RUnlock()
 }
 
 // listen waits for a message from bus.
