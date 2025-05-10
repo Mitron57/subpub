@@ -4,6 +4,9 @@ import (
 	"sync"
 )
 
+// Limit for the channel
+const messages = 256
+
 type subject struct {
 	subject      string
 	handlers     map[int]MessageHandler
@@ -15,7 +18,7 @@ type subject struct {
 func newTopic(topic string) *subject {
 	return &subject{
 		subject:      topic,
-		messageQueue: make(chan any, 256),
+		messageQueue: make(chan any, messages), //any size is 16 bytes, so we can fit into virtual memory page, like unix pipe does
 		handlers:     make(map[int]MessageHandler),
 		closed:       make(chan struct{}),
 	}
