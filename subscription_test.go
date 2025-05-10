@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSubscriber_Unsubscribe(t *testing.T) {
@@ -15,9 +17,7 @@ func TestSubscriber_Unsubscribe(t *testing.T) {
 	b := NewPubSub()
 
 	sub, err := b.Subscribe("subject", handler)
-	if err != nil {
-		t.Errorf("failed to subscribe: %e", err)
-	}
+	require.NoError(t, err)
 
 	sub.Unsubscribe()
 

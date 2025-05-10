@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func dummy(_ any) {}
@@ -17,14 +19,10 @@ func TestBus_Publish(t *testing.T) {
 
 	b := NewPubSub()
 	_, err := b.Subscribe("subject", handler)
-	if err != nil {
-		t.Errorf("failed to subscribe: %v", err)
-	}
+	require.NoError(t, err)
 
 	err = b.Publish("subject", "message")
-	if err != nil {
-		t.Errorf("failed to publish: %v", err)
-	}
+	require.NoError(t, err)
 
 	select {
 	case <-wait:
@@ -39,40 +37,30 @@ func TestBus_PublishToClosedBus(t *testing.T) {
 	_ = b.Close(context.Background())
 
 	err := b.Publish("subject", "message")
-	if err == nil || !errors.Is(err, ErrClosedBus) {
-		t.Errorf("should have failed to publish with error: %v, got: %v", ErrClosedBus, err)
-	}
+	require.ErrorIs(t, err, ErrClosedBus)
 }
 
 func TestBus_PublishToAbsentSubject(t *testing.T) {
 	b := NewPubSub()
 
 	err := b.Publish("subject", "message")
-	if err == nil || !errors.Is(err, ErrNoSuchSubject) {
-		t.Errorf("should have failed to publish with error: %v, got: %v", ErrNoSuchSubject, err)
-	}
+	require.ErrorIs(t, err, ErrNoSuchSubject)
 }
 
 func TestBus_SubscribeToClosedBus(t *testing.T) {
 	b := NewPubSub()
 
 	err := b.Close(context.Background())
-	if err != nil {
-		t.Errorf("failed to close bus: %v", err)
-	}
+	require.NoError(t, err)
 
 	_, err = b.Subscribe("subject", dummy)
-	if err == nil || !errors.Is(err, ErrClosedBus) {
-		t.Errorf("should have failed to subscribe with error: %v, got: %v", ErrClosedBus, err)
-	}
+	require.ErrorIs(t, err, ErrClosedBus)
 }
 
 func TestBus_SubscribeWithNilHandler(t *testing.T) {
 	b := NewPubSub()
 	_, err := b.Subscribe("subject", nil)
-	if err == nil || !errors.Is(err, ErrNilHandler) {
-		t.Errorf("should have failed to subscribe with error: %v, got: %v", ErrNilHandler, err)
-	}
+	require.ErrorIs(t, err, ErrNilHandler)
 }
 
 func TestBus_Close(t *testing.T) {
@@ -80,15 +68,11 @@ func TestBus_Close(t *testing.T) {
 
 	for _, topic := range []string{"topic1", "topic2", "topic3"} {
 		_, err := b.Subscribe(topic, dummy)
-		if err != nil {
-			t.Errorf("failed to subscribe: %v", err)
-		}
+		require.NoError(t, err)
 	}
 
 	err := b.Close(context.Background())
-	if err != nil {
-		t.Errorf("failed to close bus: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestBus_CloseWithCancellation(t *testing.T) {
@@ -96,9 +80,7 @@ func TestBus_CloseWithCancellation(t *testing.T) {
 
 	for _, topic := range []string{"topic1", "topic2", "topic3"} {
 		_, err := b.Subscribe(topic, dummy)
-		if err != nil {
-			t.Errorf("failed to subscribe: %v", err)
-		}
+		require.NoError(t, err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
