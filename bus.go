@@ -19,7 +19,7 @@ type SubPub interface {
 }
 
 type bus struct {
-	mx     sync.RWMutex
+	mx     sync.RWMutex //It is supposed to Publish be called more often, than Subscribe
 	topics map[string]*subject
 	closed bool
 }
@@ -57,6 +57,7 @@ func (b *bus) Subscribe(subject string, handler MessageHandler) (Subscription, e
 
 	b.mx.Lock()
 	defer b.mx.Unlock()
+
 	if b.closed {
 		return nil, ErrClosedBus
 	}
@@ -78,9 +79,11 @@ func (b *bus) Subscribe(subject string, handler MessageHandler) (Subscription, e
 func (b *bus) Publish(subject string, msg any) error {
 	b.mx.RLock()
 	defer b.mx.RUnlock()
+
 	if b.closed {
 		return ErrClosedBus
 	}
+
 	topic, ok := b.topics[subject]
 
 	if !ok {
@@ -97,10 +100,12 @@ func (b *bus) Publish(subject string, msg any) error {
 func (b *bus) Close(ctx context.Context) error {
 	b.mx.Lock()
 	defer b.mx.Unlock()
+
 	if b.closed {
 		return ErrClosedBus
 	}
 	b.closed = true
+
 	topicsToClose := len(b.topics)
 
 	if topicsToClose == 0 {

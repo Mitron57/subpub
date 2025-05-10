@@ -12,7 +12,11 @@ type subscriber struct {
 }
 
 func newSubscription(bus *bus, subject string, id int) Subscription {
-	return &subscriber{bus: bus, subject: subject, id: id}
+	return &subscriber{
+		bus:     bus,
+		subject: subject,
+		id:      id,
+	}
 }
 
 // Unsubscribe detaches subscriber from the bus
